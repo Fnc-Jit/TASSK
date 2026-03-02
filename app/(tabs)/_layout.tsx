@@ -1,71 +1,92 @@
-import React from 'react';
-import { SymbolView } from 'expo-symbols';
-import { Link, Tabs } from 'expo-router';
-import { Platform, Pressable } from 'react-native';
-
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
+import { Tabs } from 'expo-router';
+import { Home, MessageCircle, User, Settings } from 'lucide-react-native';
+import { View, Text, Platform } from 'react-native';
+import { useApp } from '../../context/AppContext';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+    const { darkMode, colors, unreadCount, isLoggedIn } = useApp();
 
-  return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme].tint,
-        // Disable the static render of the header on web
-        // to prevent a hydration error in React Navigation v6.
-        headerShown: useClientOnlyValue(false, true),
-      }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Tab One',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'chevron.left.forwardslash.chevron.right',
-                android: 'code',
-                web: 'code',
-              }}
-              tintColor={color}
-              size={28}
+    if (!isLoggedIn) return null;
+
+    const tabBarBg = darkMode ? '#1f2937' : '#ffffff';
+    const tabBarBorder = darkMode ? '#374151' : '#e5e7eb';
+    const inactiveColor = darkMode ? '#9ca3af' : '#6b7280';
+
+    return (
+        <Tabs
+            screenOptions={{
+                headerShown: false,
+                tabBarStyle: {
+                    backgroundColor: tabBarBg,
+                    borderTopColor: tabBarBorder,
+                    borderTopWidth: 1,
+                    height: Platform.OS === 'ios' ? 88 : 64,
+                    paddingTop: 8,
+                    paddingBottom: Platform.OS === 'ios' ? 28 : 8,
+                    elevation: 8,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: -2 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 4,
+                },
+                tabBarActiveTintColor: colors.text,
+                tabBarInactiveTintColor: inactiveColor,
+                tabBarLabelStyle: {
+                    fontSize: 11,
+                    fontWeight: '500',
+                    marginTop: 2,
+                },
+            }}
+        >
+            <Tabs.Screen
+                name="index"
+                options={{
+                    title: 'Home',
+                    tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
+                }}
             />
-          ),
-          headerRight: () => (
-            <Link href="/modal" asChild>
-              <Pressable style={{ marginRight: 15 }}>
-                {({ pressed }) => (
-                  <SymbolView
-                    name={{ ios: 'info.circle', android: 'info', web: 'info' }}
-                    size={25}
-                    tintColor={Colors[colorScheme].text}
-                    style={{ opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="two"
-        options={{
-          title: 'Tab Two',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'chevron.left.forwardslash.chevron.right',
-                android: 'code',
-                web: 'code',
-              }}
-              tintColor={color}
-              size={28}
+            <Tabs.Screen
+                name="chat"
+                options={{
+                    title: 'Chat',
+                    tabBarIcon: ({ color, size }) => <MessageCircle size={size} color={color} />,
+                }}
             />
-          ),
-        }}
-      />
-    </Tabs>
-  );
+            <Tabs.Screen
+                name="profile"
+                options={{
+                    title: 'Profile',
+                    tabBarIcon: ({ color, size }) => (
+                        <View>
+                            <User size={size} color={color} />
+                            {unreadCount > 0 && (
+                                <View style={{
+                                    position: 'absolute',
+                                    top: -4,
+                                    right: -6,
+                                    backgroundColor: '#ef4444',
+                                    borderRadius: 7,
+                                    width: 14,
+                                    height: 14,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                }}>
+                                    <Text style={{ color: '#fff', fontSize: 8, fontWeight: '700' }}>
+                                        {unreadCount > 9 ? '9+' : unreadCount}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                    ),
+                }}
+            />
+            <Tabs.Screen
+                name="settings"
+                options={{
+                    title: 'Settings',
+                    tabBarIcon: ({ color, size }) => <Settings size={size} color={color} />,
+                }}
+            />
+        </Tabs>
+    );
 }
