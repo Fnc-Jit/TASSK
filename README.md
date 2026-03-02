@@ -64,8 +64,18 @@ graph TD
    - 6 vibrant accent colors (Violet, Blue, Emerald, Rose, Amber, Indigo) uniquely saved to the user's synced database profile.
 
 4. **Security & Data Handling**
-   - Supabase Edge Storage natively handles React Native file binaries (ArrayBuffers) to optimize securely saving profile pictures.
    - Integrated Row-Level Security (RLS) ensures users can exclusively edit tasks and transactions involving them.
+
+5. **Multi-Language Support System**
+   - The application features a robust internalization (i18n) engine translating the UI in real-time.
+   - Currently supported languages include **English**, **Hindi (हिंदी)**, **Tamil (தமிழ்)**, **Malayalam (മലയാളം)**, and **Kannada (ಕನ್ನಡ)**.
+   - Language preferences are instantly synced to the database (`user_settings` table), ensuring the user's chosen language persists across devices.
+   - Re-renders seamlessly across all screens via React's `useMemo` hooks attached to the global Context API.
+
+6. **Secure Debt Rejection Token (X570)**
+   - In the "Money" tab, when a user rejects a debt assigned to them (a scenario that heavily impacts community ledgers), they are required to enter a fixed security authorization pin: `X570`.
+   - This friction-by-design mechanism prevents accidental taps from permanently rejecting valid debts, ensuring deliberate intent when clearing a financial transaction from the ledger.
+   - If the user inputs an incorrect token, the UI throws a localized inline error rejecting the action.
 
 ---
 
