@@ -55,16 +55,40 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 
 // ---- Users ----
 export async function fetchUserProfile(userId: string) {
-    const { data, error } = await supabase
+    // 1. Fetch user_profiles and the core users table (for name)
+    const { data: profileData, error: profileErr } = await supabase
         .from('user_profiles')
-        .select('*, users!inner(name), user_settings(dark_mode, notifications_enabled, theme_color, language)')
+        .select('*, users(name)')
         .eq('user_id', userId)
         .single();
-    if (data) {
-        // Flatten the nested name and settings for easier access in AppContext
-        return { data: { ...data, name: data.users?.name, settings: data.user_settings?.[0] }, error };
+
+    if (profileErr) console.log(`[fetchUserProfile] Profile Error:`, profileErr);
+
+    // 2. Fetch user_settings separately (since it links to users.id, not user_profiles.id)
+    const { data: settingsData, error: settingsErr } = await supabase
+        .from('user_settings')
+        .select('dark_mode, notifications_enabled, theme_color, language')
+        .eq('user_id', userId)
+        .single();
+
+    if (settingsErr && settingsErr.code !== 'PGRST116') { // Ignore "Row not found" error for settings
+        console.log(`[fetchUserProfile] Settings Error:`, settingsErr);
     }
-    return { data, error };
+
+    if (profileData) {
+        // Flatten the nested name and attach settings
+        const userName = Array.isArray(profileData.users) ? profileData.users[0]?.name : profileData.users?.name;
+        return {
+            data: {
+                ...profileData,
+                name: userName,
+                settings: settingsData || undefined
+            },
+            error: null
+        };
+    }
+
+    return { data: null, error: profileErr };
 }
 
 export async function updateUserProfile(userId: string, updates: Record<string, any>) {
