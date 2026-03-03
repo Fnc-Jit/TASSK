@@ -1,34 +1,69 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { Bell, Check, ChevronRight, FileText, Globe, HelpCircle, Mail, MapPin, Moon, Phone, Shield, User as UserIcon, Users, X } from 'lucide-react-native';
-import { useState } from 'react';
+import { Bell, Bug, Check, ChevronRight, FileText, Globe, HelpCircle, Mail, MapPin, Moon, Phone, Shield, User as UserIcon, Users, X } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Linking,
     Modal,
     ScrollView,
     StyleSheet,
-    Text, TouchableOpacity,
+    Text, TextInput, TouchableOpacity,
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppUser, useApp } from '../../context/AppContext';
 import { Language, languageNames } from '../../lib/i18n';
-import { isUserOnline, supabase } from '../../lib/supabase';
+import { ConsoleEntry, consoleLogs, isUserOnline, requestTracker, supabase } from '../../lib/supabase';
+
 
 
 
 export default function SettingsScreen() {
-    const { darkMode, setDarkMode, notificationsEnabled, setNotificationsEnabled, logout, colors, allUsers, supabaseUser, language, setLanguage, t } = useApp();
+    const { darkMode, setDarkMode, notificationsEnabled, setNotificationsEnabled, logout, colors, allUsers, supabaseUser, themeColor, language, setLanguage, t } = useApp();
     const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
     const [showPrivacySettings, setShowPrivacySettings] = useState(false);
     const [showConnections, setShowConnections] = useState(false);
     const [showLanguage, setShowLanguage] = useState(false);
     const [showHelpCenter, setShowHelpCenter] = useState(false);
     const [showViewProfile, setShowViewProfile] = useState(false);
+    const [showDebug, setShowDebug] = useState(false);
     const [selectedUser, setSelectedUser] = useState<AppUser | null>(null);
     const [selectedUserProfile, setSelectedUserProfile] = useState<{ phone?: string; bio?: string; location?: string } | null>(null);
     const [profileLoading, setProfileLoading] = useState(false);
     const [privacySettings, setPrivacySettings] = useState({ profileVisibility: true, activityStatus: true, dataSharing: false });
+    const [debugStats, setDebugStats] = useState({ sent: 0, received: 0, errors: 0 });
+    const [debugLogs, setDebugLogs] = useState<ConsoleEntry[]>([]);
+    const [consoleInput, setConsoleInput] = useState('');
+
+    const runConsoleCommand = () => {
+        if (!consoleInput.trim()) return;
+        const cmd = consoleInput.trim();
+        setConsoleInput('');
+        console.log(`> ${cmd}`);
+        try {
+            // eslint-disable-next-line no-eval
+            const result = eval(cmd);
+            if (result instanceof Promise) {
+                result.then((r: any) => console.log('→', r)).catch((e: any) => console.error('→', e?.message || e));
+            } else {
+                console.log('→', result);
+            }
+        } catch (e: any) {
+            console.error('→', e?.message || String(e));
+        }
+    };
+
+    // Sync debug stats & console logs every second when modal is open
+    useEffect(() => {
+        if (!showDebug) return;
+        setDebugStats({ ...requestTracker });
+        setDebugLogs([...consoleLogs]);
+        const interval = setInterval(() => {
+            setDebugStats({ ...requestTracker });
+            setDebugLogs([...consoleLogs]);
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [showDebug]);
 
     const openUserProfile = async (user: AppUser) => {
         setSelectedUser(user);
@@ -137,6 +172,12 @@ export default function SettingsScreen() {
                             <Text style={{ fontSize: 13, color: textSecondary, marginTop: 4 }}>Made with ❤️ By Jitraj 2026</Text>
                             <Text style={{ fontSize: 12, color: textSecondary, marginTop: 8 }}>© 2026 TASKX. All rights reserved.</Text>
                         </View>
+                    </View>
+
+                    {/* Developer */}
+                    <View style={[st.card, { backgroundColor: cardBg }]}>
+                        <Text style={[st.sectionLabel, { color: textSecondary, borderBottomColor: borderColor }]}>Developer</Text>
+                        <MenuBtn icon={<Bug size={20} color={textSecondary} />} label="Debug Menu" border={false} onPress={() => setShowDebug(true)} />
                     </View>
 
                     {/* Danger Zone */}
@@ -355,6 +396,105 @@ export default function SettingsScreen() {
                         )}
 
                         <TouchableOpacity onPress={() => setShowViewProfile(false)} style={[st.fullBtn, { backgroundColor: colors.primary, marginTop: 20 }]}>
+                            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Close</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Debug Modal */}
+            <Modal visible={showDebug} transparent animationType="slide">
+                <View style={st.overlay}>
+                    <View style={[st.modalCard, { backgroundColor: cardBg }]}>
+                        <View style={st.modalHeader}>
+                            <Text style={[st.modalTitle, { color: textPrimary }]}>🛠 Debug Menu</Text>
+                            <TouchableOpacity onPress={() => setShowDebug(false)}><X size={24} color={textSecondary} /></TouchableOpacity>
+                        </View>
+
+                        <View style={{ gap: 12 }}>
+                            {/* Request Stats */}
+                            <View style={[st.connRow, { backgroundColor: darkMode ? '#374151' : '#f9fafb' }]}>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%' }}>
+                                    <View style={{ alignItems: 'center', flex: 1 }}>
+                                        <Text style={{ fontSize: 24, fontWeight: '700', color: '#3b82f6' }}>{debugStats.sent}</Text>
+                                        <Text style={{ fontSize: 12, color: textSecondary, marginTop: 2 }}>Requests Sent</Text>
+                                    </View>
+                                    <View style={{ width: 1, backgroundColor: borderColor }} />
+                                    <View style={{ alignItems: 'center', flex: 1 }}>
+                                        <Text style={{ fontSize: 24, fontWeight: '700', color: '#16a34a' }}>{debugStats.received}</Text>
+                                        <Text style={{ fontSize: 12, color: textSecondary, marginTop: 2 }}>Responses OK</Text>
+                                    </View>
+                                    <View style={{ width: 1, backgroundColor: borderColor }} />
+                                    <View style={{ alignItems: 'center', flex: 1 }}>
+                                        <Text style={{ fontSize: 24, fontWeight: '700', color: '#dc2626' }}>{debugStats.errors}</Text>
+                                        <Text style={{ fontSize: 12, color: textSecondary, marginTop: 2 }}>Errors</Text>
+                                    </View>
+                                </View>
+                            </View>
+
+                            {/* App Details */}
+                            <View style={[st.connRow, { backgroundColor: darkMode ? '#374151' : '#f9fafb', flexDirection: 'column', alignItems: 'flex-start', gap: 6 }]}>
+                                <Text style={{ fontSize: 14, fontWeight: '600', color: textPrimary }}>App Info</Text>
+                                <Text style={{ fontSize: 13, color: textSecondary }}>User ID: {supabaseUser?.id?.slice(0, 12) || 'N/A'}...</Text>
+                                <Text style={{ fontSize: 13, color: textSecondary }}>Theme: {themeColor}</Text>
+                                <Text style={{ fontSize: 13, color: textSecondary }}>Language: {language}</Text>
+                                <Text style={{ fontSize: 13, color: textSecondary }}>Dark Mode: {darkMode ? 'On' : 'Off'}</Text>
+                                <Text style={{ fontSize: 13, color: textSecondary }}>Total Users: {allUsers.length}</Text>
+                            </View>
+
+                            {/* Actions */}
+                            <TouchableOpacity onPress={() => { requestTracker.sent = 0; requestTracker.received = 0; requestTracker.errors = 0; setDebugStats({ sent: 0, received: 0, errors: 0 }); }}
+                                style={[st.connRow, { backgroundColor: darkMode ? '#374151' : '#f9fafb', justifyContent: 'center' }]}>
+                                <Text style={{ fontSize: 14, fontWeight: '500', color: '#f59e0b' }}>Reset Counters</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Console Logs */}
+                        <View style={{ marginTop: 12 }}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                <Text style={{ fontSize: 14, fontWeight: '600', color: textPrimary }}>Console ({debugLogs.length})</Text>
+                                <TouchableOpacity onPress={() => { consoleLogs.length = 0; setDebugLogs([]); }}>
+                                    <Text style={{ fontSize: 12, color: '#f59e0b' }}>Clear</Text>
+                                </TouchableOpacity>
+                            </View>
+                            <ScrollView style={{ maxHeight: 180, backgroundColor: '#111827', borderRadius: 10, padding: 10 }}>
+                                {debugLogs.length === 0 ? (
+                                    <Text style={{ color: '#6b7280', fontSize: 12, fontStyle: 'italic' }}>No logs yet...</Text>
+                                ) : debugLogs.map((log, i) => (
+                                    <View key={i} style={{ flexDirection: 'row', paddingVertical: 3, borderBottomWidth: 0.5, borderBottomColor: '#1f2937' }}>
+                                        <Text style={{ fontSize: 10, color: '#6b7280', width: 60, fontFamily: 'monospace' }}>{log.time}</Text>
+                                        <Text style={{ fontSize: 10, width: 14, color: log.type === 'error' ? '#ef4444' : log.type === 'warn' ? '#f59e0b' : '#6b7280' }}>
+                                            {log.type === 'error' ? '✕' : log.type === 'warn' ? '⚠' : '●'}
+                                        </Text>
+                                        <Text style={{ fontSize: 10, color: log.type === 'error' ? '#fca5a5' : log.type === 'warn' ? '#fde68a' : '#d1d5db', flex: 1, fontFamily: 'monospace' }} numberOfLines={2}>
+                                            {log.message}
+                                        </Text>
+                                    </View>
+                                ))}
+                            </ScrollView>
+                            {/* Typable Console Input */}
+                            <View style={{ flexDirection: 'row', marginTop: 8, gap: 6 }}>
+                                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#111827', borderRadius: 8, paddingHorizontal: 10, borderWidth: 1, borderColor: '#374151' }}>
+                                    <Text style={{ color: '#10b981', fontSize: 13, fontFamily: 'monospace', marginRight: 6 }}>{'>'}</Text>
+                                    <TextInput
+                                        value={consoleInput}
+                                        onChangeText={setConsoleInput}
+                                        onSubmitEditing={runConsoleCommand}
+                                        placeholder="Type JS command..."
+                                        placeholderTextColor="#4b5563"
+                                        style={{ flex: 1, color: '#e5e7eb', fontSize: 12, fontFamily: 'monospace', paddingVertical: 8 }}
+                                        autoCapitalize="none"
+                                        autoCorrect={false}
+                                        returnKeyType="go"
+                                    />
+                                </View>
+                                <TouchableOpacity onPress={runConsoleCommand} style={{ backgroundColor: '#10b981', borderRadius: 8, paddingHorizontal: 14, justifyContent: 'center' }}>
+                                    <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Run</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
+                        <TouchableOpacity onPress={() => setShowDebug(false)} style={[st.fullBtn, { backgroundColor: colors.primary, marginTop: 20 }]}>
                             <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Close</Text>
                         </TouchableOpacity>
                     </View>

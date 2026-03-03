@@ -50,6 +50,49 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
         detectSessionInUrl: false, // Important for React Native
     },
 });
+// ==================== REQUEST TRACKER ====================
+// Global counters for the debug menu
+export const requestTracker = { sent: 0, received: 0, errors: 0 };
+
+// ==================== CONSOLE CAPTURE ====================
+export interface ConsoleEntry {
+    type: 'log' | 'warn' | 'error';
+    message: string;
+    time: string;
+}
+export const consoleLogs: ConsoleEntry[] = [];
+const MAX_LOGS = 100;
+
+// Intercept console methods
+const origLog = console.log;
+const origWarn = console.warn;
+const origError = console.error;
+
+const captureLog = (type: 'log' | 'warn' | 'error', args: any[]) => {
+    const message = args.map(a => {
+        try { return typeof a === 'object' ? JSON.stringify(a, null, 0).slice(0, 200) : String(a); }
+        catch { return String(a); }
+    }).join(' ');
+    const now = new Date();
+    const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+    consoleLogs.unshift({ type, message: message.slice(0, 300), time });
+    if (consoleLogs.length > MAX_LOGS) consoleLogs.pop();
+};
+
+console.log = (...args: any[]) => { captureLog('log', args); origLog(...args); };
+console.warn = (...args: any[]) => { captureLog('warn', args); origWarn(...args); };
+console.error = (...args: any[]) => { captureLog('error', args); origError(...args); };
+
+export async function trackRequest<T>(promise: PromiseLike<{ data: T; error: any }>): Promise<{ data: T; error: any }> {
+    requestTracker.sent++;
+    const result = await promise;
+    if (result.error) {
+        requestTracker.errors++;
+    } else {
+        requestTracker.received++;
+    }
+    return result;
+}
 
 // ==================== DATABASE HELPERS ====================
 
@@ -122,12 +165,11 @@ export async function updateUserSettings(userId: string, updates: Record<string,
 
 // ---- Tasks ----
 export async function fetchTasks(userId: string) {
-    const { data, error } = await supabase
+    return trackRequest(supabase
         .from('tasks')
         .select('*')
         .or(`assigned_to.eq.${userId},assigned_by.eq.${userId}`)
-        .order('created_at', { ascending: false });
-    return { data, error };
+        .order('created_at', { ascending: false }));
 }
 
 export async function createTask(task: {
@@ -182,12 +224,11 @@ export async function createTaskRedirect(redirect: {
 
 // ---- Transactions ----
 export async function fetchTransactions(userId: string) {
-    const { data, error } = await supabase
+    return trackRequest(supabase
         .from('transactions')
         .select('*')
         .or(`created_by.eq.${userId},person_id.eq.${userId}`)
-        .order('created_at', { ascending: false });
-    return { data, error };
+        .order('created_at', { ascending: false }));
 }
 
 export async function createTransaction(transaction: {
@@ -251,12 +292,11 @@ export async function uploadPaymentProof(txId: string, userId: string, fileUri: 
 
 // ---- Chat ----
 export async function fetchChatMessages(limit = 50) {
-    const { data, error } = await supabase
+    return trackRequest(supabase
         .from('chat_messages')
         .select('*, users:sender_id(name)')
         .order('created_at', { ascending: true })
-        .limit(limit);
-    return { data, error };
+        .limit(limit));
 }
 
 export async function sendChatMessage(message: {

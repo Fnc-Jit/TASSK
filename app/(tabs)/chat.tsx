@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
 import {
+    fetchAllUsers,
     fetchChatMessages,
     isUserOnline,
     sendChatMessage,
@@ -100,11 +101,18 @@ export default function ChatScreen() {
         loadMembers();
     }, [loadMessages, loadMembers]);
 
-    // Auto-refresh online status every 30 seconds
+    // Auto-refresh online status every 30 seconds by fetching fresh data
     useEffect(() => {
-        const interval = setInterval(() => {
-            // Re-set members to trigger re-render with fresh isUserOnline checks
-            setMembers(prev => [...prev]);
+        const interval = setInterval(async () => {
+            const { data } = await fetchAllUsers();
+            if (data) {
+                setMembers(data.map((u: any) => ({
+                    user_id: u.id,
+                    name: u.name,
+                    is_active: u.is_active || false,
+                    last_seen: u.last_seen || null,
+                })));
+            }
         }, 30 * 1000);
         return () => clearInterval(interval);
     }, []);

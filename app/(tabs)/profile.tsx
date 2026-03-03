@@ -72,7 +72,12 @@ export default function ProfileScreen() {
         }
     }, [supabaseUser]);
 
-    useEffect(() => { loadStats(); }, [loadStats]);
+    useEffect(() => {
+        loadStats();
+        // Auto-refresh stats every 30 seconds
+        const interval = setInterval(loadStats, 30 * 1000);
+        return () => clearInterval(interval);
+    }, [loadStats]);
 
     const [isEditingName, setIsEditingName] = useState(false);
     const [editName, setEditName] = useState(currentUser?.name || '');
