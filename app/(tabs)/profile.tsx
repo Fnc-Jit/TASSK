@@ -1,17 +1,40 @@
-import { useState, useEffect, useCallback } from 'react';
-import {
-    View, Text, TouchableOpacity, ScrollView, TextInput,
-    Modal, StyleSheet, Image, Alert, ActivityIndicator,
-} from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
+import {
+    Bell,
+    BellOff,
+    BellRing,
+    Camera,
+    Check,
+    CheckCircle,
+    ChevronRight,
+    FileText,
+    Info,
+    Mail,
+    MapPin,
+    Moon,
+    Palette,
+    Phone,
+    Sun,
+    User,
+    X
+} from 'lucide-react-native';
+import { useCallback, useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Image,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
 import { fetchTasks, fetchTransactions, uploadProfileImage } from '../../lib/supabase';
-import * as ImagePicker from 'expo-image-picker';
-import {
-    Camera, User, Mail, Bell, Lock, Palette, Info, ChevronRight, X,
-    Phone, MapPin, FileText, Check, Sun, Moon, CheckCircle, BellRing, BellOff,
-} from 'lucide-react-native';
 
 const themeColors = [
     { name: 'violet', from: '#7c3aed', to: '#9333ea' },
@@ -185,11 +208,11 @@ export default function ProfileScreen() {
                                 <Text style={[st.statLabel, { color: textSecondary }]}>{t.tasks}</Text>
                             </View>
                             <View style={st.statItem}>
-                                <Text style={[st.statNumber, { color: '#16a34a' }]}>₹{stats.owed}</Text>
+                                <Text style={[st.statNumber, { color: '#16a34a' }]} adjustsFontSizeToFit numberOfLines={1}>₹{Number(stats.owed.toFixed(2))}</Text>
                                 <Text style={[st.statLabel, { color: textSecondary }]}>{t.owed}</Text>
                             </View>
                             <View style={st.statItem}>
-                                <Text style={[st.statNumber, { color: '#dc2626' }]}>₹{stats.owing}</Text>
+                                <Text style={[st.statNumber, { color: '#dc2626' }]} adjustsFontSizeToFit numberOfLines={1}>₹{Number(stats.owing.toFixed(2))}</Text>
                                 <Text style={[st.statLabel, { color: textSecondary }]}>{t.owing}</Text>
                             </View>
                         </View>
@@ -200,7 +223,6 @@ export default function ProfileScreen() {
                         <Text style={[st.sectionLabel, { color: textSecondary, borderBottomColor: borderColor }]}>{t.accountSettings}</Text>
                         <MenuRow icon={<User size={20} color={textSecondary} />} label={t.personalInfo}
                             onPress={() => { setEditInfo({ name: currentUser?.name || '', email: currentUser?.email || '', phone: currentUser?.phone || '', bio: currentUser?.bio || '', location: currentUser?.location || '' }); setShowPersonalInfo(true); }} />
-                        <MenuRow icon={<Lock size={20} color={textSecondary} />} label={t.privacySecurity} onPress={() => { }} />
                         <MenuRow icon={<Bell size={20} color={textSecondary} />} label={t.notifications} border={false}
                             right={unreadCount > 0 ? <View style={st.badge}><Text style={st.badgeText}>{unreadCount}</Text></View> : null}
                             onPress={() => setShowNotifications(true)} />
@@ -383,6 +405,7 @@ export default function ProfileScreen() {
                                 <LinearGradient colors={colors.gradient} style={st.aboutIcon}><CheckCircle size={40} color="#fff" /></LinearGradient>
                                 <Text style={{ fontSize: 24, fontWeight: '600', color: textPrimary, marginTop: 16 }}>TASKX</Text>
                                 <Text style={{ fontSize: 14, color: textSecondary, marginTop: 4 }}>Version 1.0.0 (Build 2026.03.02)</Text>
+                                <Text style={{ fontSize: 13, color: textSecondary, marginTop: 4 }}>Made with ❤️ By Jitraj 2026</Text>
                             </View>
                             {[
                                 { title: t.whatIsTaskx, body: t.whatIsTaskxBody },

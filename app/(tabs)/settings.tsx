@@ -1,12 +1,19 @@
+import { LinearGradient } from 'expo-linear-gradient';
+import { Bell, Check, ChevronRight, FileText, Globe, HelpCircle, Mail, MapPin, Moon, Phone, Shield, User as UserIcon, Users, X } from 'lucide-react-native';
 import { useState } from 'react';
 import {
-    View, Text, TouchableOpacity, ScrollView, Modal, StyleSheet,
+    ActivityIndicator,
+    Linking,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text, TouchableOpacity,
+    View,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useApp } from '../../context/AppContext';
-import { languageNames, Language } from '../../lib/i18n';
-import { Bell, Moon, Globe, Shield, HelpCircle, FileText, Users, ChevronRight, Check, X } from 'lucide-react-native';
+import { AppUser, useApp } from '../../context/AppContext';
+import { Language, languageNames } from '../../lib/i18n';
+import { isUserOnline, supabase } from '../../lib/supabase';
 
 
 
@@ -16,7 +23,26 @@ export default function SettingsScreen() {
     const [showPrivacySettings, setShowPrivacySettings] = useState(false);
     const [showConnections, setShowConnections] = useState(false);
     const [showLanguage, setShowLanguage] = useState(false);
+    const [showHelpCenter, setShowHelpCenter] = useState(false);
+    const [showViewProfile, setShowViewProfile] = useState(false);
+    const [selectedUser, setSelectedUser] = useState<AppUser | null>(null);
+    const [selectedUserProfile, setSelectedUserProfile] = useState<{ phone?: string; bio?: string; location?: string } | null>(null);
+    const [profileLoading, setProfileLoading] = useState(false);
     const [privacySettings, setPrivacySettings] = useState({ profileVisibility: true, activityStatus: true, dataSharing: false });
+
+    const openUserProfile = async (user: AppUser) => {
+        setSelectedUser(user);
+        setSelectedUserProfile(null);
+        setProfileLoading(true);
+        setShowViewProfile(true);
+        try {
+            const { data } = await supabase.from('user_profiles').select('phone, bio, location').eq('user_id', user.id).single();
+            if (data) setSelectedUserProfile(data);
+        } catch (e) {
+            // No extended profile available
+        }
+        setProfileLoading(false);
+    };
 
     const bg = darkMode ? '#111827' : colors.lightBg;
     const cardBg = darkMode ? '#1f2937' : '#ffffff';
@@ -98,7 +124,7 @@ export default function SettingsScreen() {
                     {/* Support & Legal */}
                     <View style={[st.card, { backgroundColor: cardBg }]}>
                         <Text style={[st.sectionLabel, { color: textSecondary, borderBottomColor: borderColor }]}>{t.supportLegal}</Text>
-                        <MenuBtn icon={<HelpCircle size={20} color={textSecondary} />} label={t.helpCenter} onPress={() => { }} />
+                        <MenuBtn icon={<HelpCircle size={20} color={textSecondary} />} label={t.helpCenter} onPress={() => setShowHelpCenter(true)} />
                         <MenuBtn icon={<FileText size={20} color={textSecondary} />} label={t.privacyPolicy} border={false} onPress={() => setShowPrivacyPolicy(true)} />
                     </View>
 
@@ -108,6 +134,7 @@ export default function SettingsScreen() {
                             <LinearGradient colors={colors.gradient} style={st.appIcon}><Check size={32} color="#fff" /></LinearGradient>
                             <Text style={{ fontWeight: '600', color: textPrimary, marginTop: 12, fontSize: 16 }}>TASKX</Text>
                             <Text style={{ fontSize: 14, color: textSecondary, marginTop: 4 }}>Version 1.0.0</Text>
+                            <Text style={{ fontSize: 13, color: textSecondary, marginTop: 4 }}>Made with ❤️ By Jitraj 2026</Text>
                             <Text style={{ fontSize: 12, color: textSecondary, marginTop: 8 }}>© 2026 TASKX. All rights reserved.</Text>
                         </View>
                     </View>
@@ -200,11 +227,11 @@ export default function SettingsScreen() {
                                     </LinearGradient>
                                     <View>
                                         <Text style={{ color: textPrimary, fontSize: 15 }}>{user.name}</Text>
-                                        <Text style={{ fontSize: 12, color: textSecondary }}>{user.id === supabaseUser?.id ? 'Your account' : 'Connected'}</Text>
+                                        <Text style={{ fontSize: 12, color: textSecondary }}>{user.id === supabaseUser?.id ? 'Your account' : (isUserOnline(user.last_seen) ? 'Online' : 'Offline')}</Text>
                                     </View>
                                 </View>
                                 {user.id !== supabaseUser?.id && (
-                                    <TouchableOpacity><Text style={{ fontSize: 13, color: colors.text, fontWeight: '500' }}>View Profile</Text></TouchableOpacity>
+                                    <TouchableOpacity onPress={() => openUserProfile(user)}><Text style={{ fontSize: 13, color: colors.text, fontWeight: '500' }}>View Profile</Text></TouchableOpacity>
                                 )}
                             </View>
                         ))}
@@ -235,6 +262,101 @@ export default function SettingsScreen() {
                                 {language === lang && <Check size={20} color={colors.primary} />}
                             </TouchableOpacity>
                         ))}
+                    </View>
+                </View>
+            </Modal>
+            {/* Help Center Modal */}
+            <Modal visible={showHelpCenter} transparent animationType="slide">
+                <View style={st.overlay}>
+                    <View style={[st.modalCard, { backgroundColor: cardBg }]}>
+                        <View style={st.modalHeader}>
+                            <Text style={[st.modalTitle, { color: textPrimary }]}>{t.helpCenter}</Text>
+                            <TouchableOpacity onPress={() => setShowHelpCenter(false)}><X size={24} color={textSecondary} /></TouchableOpacity>
+                        </View>
+                        <Text style={{ fontSize: 15, color: textPrimary, marginBottom: 8 }}>Contact Us</Text>
+
+                        <TouchableOpacity onPress={() => Linking.openURL('mailto:jitrajesh5@gmail.com')} style={[st.menuRow, { paddingHorizontal: 0, paddingVertical: 12 }]}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                                <Text style={{ color: colors.primary, fontSize: 15, fontWeight: '500' }}>Email Us</Text>
+                            </View>
+                            <Text style={{ color: textSecondary, fontSize: 13 }}>jitrajesh5@gmail.com</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity onPress={() => Linking.openURL('https://github.com/Fnc-Jit')} style={[st.menuRow, { paddingHorizontal: 0, paddingVertical: 12 }]}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                                <Text style={{ color: colors.primary, fontSize: 15, fontWeight: '500' }}>GitHub</Text>
+                            </View>
+                            <Text style={{ color: textSecondary, fontSize: 13 }}>Fnc-Jit</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity onPress={() => setShowHelpCenter(false)} style={[st.fullBtn, { backgroundColor: colors.primary, marginTop: 20 }]}>
+                            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Close</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* View Profile Modal */}
+            <Modal visible={showViewProfile} transparent animationType="slide">
+                <View style={st.overlay}>
+                    <View style={[st.modalCard, { backgroundColor: cardBg }]}>
+                        <View style={st.modalHeader}>
+                            <Text style={[st.modalTitle, { color: textPrimary }]}>User Profile</Text>
+                            <TouchableOpacity onPress={() => setShowViewProfile(false)}><X size={24} color={textSecondary} /></TouchableOpacity>
+                        </View>
+                        {selectedUser && (
+                            <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                                <LinearGradient colors={colors.gradient} style={{ width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                                    <Text style={{ color: '#fff', fontSize: 28, fontWeight: '700' }}>{selectedUser.name.charAt(0)}</Text>
+                                </LinearGradient>
+                                <Text style={{ fontSize: 20, fontWeight: '600', color: textPrimary }}>{selectedUser.name}</Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: isUserOnline(selectedUser.last_seen) ? '#16a34a' : '#9ca3af' }} />
+                                    <Text style={{ fontSize: 13, color: isUserOnline(selectedUser.last_seen) ? '#16a34a' : textSecondary }}>{isUserOnline(selectedUser.last_seen) ? 'Online' : 'Offline'}</Text>
+                                </View>
+                            </View>
+                        )}
+
+                        {profileLoading ? (
+                            <ActivityIndicator color={colors.primary} style={{ marginVertical: 20 }} />
+                        ) : (
+                            <View>
+                                <View style={[st.menuRow, { paddingHorizontal: 0, borderBottomWidth: 1, borderBottomColor: borderColor }]}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                        <Mail size={18} color={textSecondary} />
+                                        <Text style={{ fontSize: 14, color: textSecondary }}>Email</Text>
+                                    </View>
+                                    <Text style={{ fontSize: 14, color: textPrimary }}>{selectedUser?.email || '-'}</Text>
+                                </View>
+                                <View style={[st.menuRow, { paddingHorizontal: 0, borderBottomWidth: 1, borderBottomColor: borderColor }]}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                        <Phone size={18} color={textSecondary} />
+                                        <Text style={{ fontSize: 14, color: textSecondary }}>Phone</Text>
+                                    </View>
+                                    <Text style={{ fontSize: 14, color: textPrimary }}>{selectedUserProfile?.phone || '-'}</Text>
+                                </View>
+                                <View style={[st.menuRow, { paddingHorizontal: 0, borderBottomWidth: 1, borderBottomColor: borderColor }]}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                        <MapPin size={18} color={textSecondary} />
+                                        <Text style={{ fontSize: 14, color: textSecondary }}>Location</Text>
+                                    </View>
+                                    <Text style={{ fontSize: 14, color: textPrimary }}>{selectedUserProfile?.location || '-'}</Text>
+                                </View>
+                                {selectedUserProfile?.bio ? (
+                                    <View style={{ marginTop: 12 }}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                                            <UserIcon size={18} color={textSecondary} />
+                                            <Text style={{ fontSize: 14, color: textSecondary }}>Bio</Text>
+                                        </View>
+                                        <Text style={{ fontSize: 14, color: textPrimary, lineHeight: 20 }}>{selectedUserProfile.bio}</Text>
+                                    </View>
+                                ) : null}
+                            </View>
+                        )}
+
+                        <TouchableOpacity onPress={() => setShowViewProfile(false)} style={[st.fullBtn, { backgroundColor: colors.primary, marginTop: 20 }]}>
+                            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Close</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
             </Modal>

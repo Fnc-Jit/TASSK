@@ -1,7 +1,7 @@
-import 'react-native-url-polyfill/auto';
 import { createClient } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
+import 'react-native-url-polyfill/auto';
 
 const supabaseUrl = 'https://iqtwhrtywrginsrpjmkn.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlxdHdocnR5d3JnaW5zcnBqbWtuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0Njk2ODksImV4cCI6MjA4ODA0NTY4OX0.PkNev0gqUUeB8YzsPh4mlJfxFhJe8waNUnzmpXGVrA0';
@@ -331,12 +331,57 @@ export async function fetchConnections(userId: string) {
 
 // ---- All Users (for assigning tasks/transactions) ----
 export async function fetchAllUsers() {
+    // Try with last_seen join first
     const { data, error } = await supabase
+        .from('users')
+        .select('id, name, email, is_active, user_profiles(last_seen)')
+        .eq('is_active', true)
+        .order('name');
+
+    if (!error && data) {
+        const users = data.map((u: any) => ({
+            id: u.id,
+            name: u.name,
+            email: u.email,
+            is_active: u.is_active,
+            last_seen: u.user_profiles?.last_seen || null,
+        }));
+        return { data: users, error: null };
+    }
+
+    // Fallback: fetch without last_seen if join fails
+    const { data: fb, error: fbErr } = await supabase
         .from('users')
         .select('id, name, email, is_active')
         .eq('is_active', true)
         .order('name');
-    return { data, error };
+
+    const users = fb?.map((u: any) => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        is_active: u.is_active,
+        last_seen: null,
+    })) || [];
+
+    return { data: users, error: fbErr };
+}
+
+// ---- Presence ----
+export async function updateLastSeen(userId: string) {
+    const { error } = await supabase
+        .from('user_profiles')
+        .upsert({
+            user_id: userId,
+            last_seen: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+    return { error };
+}
+
+export function isUserOnline(lastSeen: string | null, minutesThreshold = 5): boolean {
+    if (!lastSeen) return false;
+    const diff = Date.now() - new Date(lastSeen).getTime();
+    return diff < minutesThreshold * 60 * 1000;
 }
 
 // ---- Privacy Settings ----

@@ -1,15 +1,23 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import {
-    View, Text, TextInput, TouchableOpacity, ScrollView,
-    Modal, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator,
-} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Send, Smile, Users, X } from 'lucide-react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+    ActivityIndicator,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text, TextInput, TouchableOpacity,
+    View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
-import { Send, Smile, Users, X, Trash2 } from 'lucide-react-native';
 import {
-    fetchChatMessages, sendChatMessage, fetchChatMembers,
-    subscribeToChatMessages,
+    fetchChatMessages,
+    isUserOnline,
+    sendChatMessage,
+    subscribeToChatMessages
 } from '../../lib/supabase';
 
 interface Message {
@@ -25,6 +33,7 @@ interface Member {
     user_id: string;
     name: string;
     is_active: boolean;
+    last_seen: string | null;
 }
 
 const quickEmojis = ['👍', '❤️', '😂', '🎉', '🔥', '💯', '👏', '✅'];
@@ -82,6 +91,7 @@ export default function ChatScreen() {
             user_id: u.id,
             name: u.name,
             is_active: u.is_active || false,
+            last_seen: u.last_seen || null,
         })));
     }, [allUsers]);
 
@@ -89,6 +99,15 @@ export default function ChatScreen() {
         loadMessages();
         loadMembers();
     }, [loadMessages, loadMembers]);
+
+    // Auto-refresh online status every 30 seconds
+    useEffect(() => {
+        const interval = setInterval(() => {
+            // Re-set members to trigger re-render with fresh isUserOnline checks
+            setMembers(prev => [...prev]);
+        }, 30 * 1000);
+        return () => clearInterval(interval);
+    }, []);
 
     useEffect(() => {
         const sub = subscribeToChatMessages((payload) => {
@@ -122,7 +141,7 @@ export default function ChatScreen() {
         });
     };
 
-    const onlineCount = members.filter(m => m.is_active).length;
+    const onlineCount = members.filter(m => isUserOnline(m.last_seen)).length;
 
     if (loading) {
         return (
@@ -275,12 +294,12 @@ export default function ChatScreen() {
                                             <LinearGradient colors={member.user_id === supabaseUser?.id ? colors.gradient : getAvatarColor(member.name)} style={st.memberAvatar}>
                                                 <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>{member.name.charAt(0)}</Text>
                                             </LinearGradient>
-                                            <View style={[st.statusDot, { backgroundColor: member.is_active ? '#22c55e' : '#9ca3af' }]} />
+                                            <View style={[st.statusDot, { backgroundColor: isUserOnline(member.last_seen) ? '#22c55e' : '#9ca3af' }]} />
                                         </View>
                                         <View>
                                             <Text style={{ color: textPrimary, fontSize: 15 }}>{member.name}</Text>
-                                            <Text style={{ fontSize: 12, color: member.user_id === supabaseUser?.id ? colors.text : (member.is_active ? '#22c55e' : textSecondary) }}>
-                                                {member.user_id === supabaseUser?.id ? t.you : (member.is_active ? t.online : t.offline)}
+                                            <Text style={{ fontSize: 12, color: member.user_id === supabaseUser?.id ? colors.text : (isUserOnline(member.last_seen) ? '#22c55e' : textSecondary) }}>
+                                                {member.user_id === supabaseUser?.id ? t.you : (isUserOnline(member.last_seen) ? t.online : t.offline)}
                                             </Text>
                                         </View>
                                     </View>

@@ -1,7 +1,7 @@
-import { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
-import { supabase, fetchUserProfile, fetchNotifications as fetchNotifs, fetchAllUsers } from '../lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
-import { Language, getTranslations, TranslationKeys, languageNames } from '../lib/i18n';
+import { ReactNode, createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { Language, TranslationKeys, getTranslations } from '../lib/i18n';
+import { fetchAllUsers, fetchNotifications as fetchNotifs, fetchUserProfile, supabase, updateLastSeen } from '../lib/supabase';
 
 // ==================== TYPES ====================
 export interface UserProfile {
@@ -38,6 +38,7 @@ export interface AppUser {
   name: string;
   email: string;
   is_active: boolean;
+  last_seen: string | null;
 }
 
 interface AppContextType {
@@ -265,6 +266,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
       console.log('Could not load users:', error);
     }
   };
+
+  // Heartbeat: update last_seen every 2 minutes & refresh user list
+  useEffect(() => {
+    if (!supabaseUser || !isLoggedIn) return;
+
+    // Update immediately on login
+    updateLastSeen(supabaseUser.id);
+
+    const interval = setInterval(() => {
+      updateLastSeen(supabaseUser.id);
+      loadAllUsers(); // refresh to pick up other users' last_seen
+    }, 2 * 60 * 1000); // every 2 minutes
+
+    return () => clearInterval(interval);
+  }, [supabaseUser, isLoggedIn]);
 
   // Sync settings to DB when they change
   useEffect(() => {

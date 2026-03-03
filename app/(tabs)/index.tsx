@@ -1,19 +1,39 @@
-import { useState, useEffect, useCallback } from 'react';
-import {
-    View, Text, TouchableOpacity, ScrollView, TextInput, Modal,
-    StyleSheet, ActivityIndicator, RefreshControl, Alert
-} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import {
+    ArrowRight, CheckCircle,
+    CheckSquare,
+    ChevronDown,
+    DollarSign,
+    Plus,
+    TrendingDown,
+    TrendingUp,
+    User,
+    X
+} from 'lucide-react-native';
+import { useCallback, useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Modal,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../context/AppContext';
 import {
-    Plus, User, ArrowRight, CheckCircle, MessageSquare, X, LogOut, Moon, Sun, Monitor, Bell, Settings,
-    IndianRupee, TrendingUp, TrendingDown, ChevronDown, CheckSquare, DollarSign
-} from 'lucide-react-native';
-import {
-    fetchTasks, createTask as createTaskDB, updateTask as updateTaskDB, createTaskRedirect, deleteTask,
-    fetchTransactions, createTransaction as createTransactionDB, updateTransaction as updateTransactionDB,
+    createTask as createTaskDB,
+    createTaskRedirect,
+    createTransaction as createTransactionDB,
+    fetchTasks,
+    fetchTransactions,
     subscribeToTasks, subscribeToTransactions,
+    updateTask as updateTaskDB,
+    updateTransaction as updateTransactionDB
 } from '../../lib/supabase';
 
 // ==================== TYPES ====================
@@ -581,7 +601,7 @@ function MoneyTab() {
                         </Text>
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
-                        <Text style={{ fontSize: 16, fontWeight: '600', color }}>{prefix === 'To' ? '-' : prefix === 'From' ? '+' : ''}₹{tx.amount}</Text>
+                        <Text style={{ fontSize: 16, fontWeight: '600', color }}>{prefix === 'To' ? '-' : prefix === 'From' ? '+' : ''}₹{Number(tx.amount.toFixed(2))}</Text>
                         <View style={[s.badge, { backgroundColor: tx.status === 'pending' ? '#fef9c3' : tx.status === 'completed' ? '#dcfce7' : '#fee2e2', marginTop: 4 }]}>
                             <Text style={[s.badgeText, { color: tx.status === 'pending' ? '#a16207' : tx.status === 'completed' ? '#15803d' : '#ef4444' }]}>{tx.status}</Text>
                         </View>
@@ -618,14 +638,14 @@ function MoneyTab() {
                             <TrendingDown size={16} color="#fff" />
                             <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.9)' }}>{t.iOwe}</Text>
                         </View>
-                        <Text style={{ fontSize: 24, fontWeight: '700', color: '#fff' }}>₹{totalOwed}</Text>
+                        <Text style={{ fontSize: 24, fontWeight: '700', color: '#fff' }}>₹{Number(totalOwed.toFixed(2))}</Text>
                     </LinearGradient>
                     <LinearGradient colors={['#22c55e', '#16a34a']} style={[s.summaryCard, { flex: 1 }]}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                             <TrendingUp size={16} color="#fff" />
                             <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.9)' }}>{t.imOwed}</Text>
                         </View>
-                        <Text style={{ fontSize: 24, fontWeight: '700', color: '#fff' }}>₹{totalLent}</Text>
+                        <Text style={{ fontSize: 24, fontWeight: '700', color: '#fff' }}>₹{Number(totalLent.toFixed(2))}</Text>
                     </LinearGradient>
                 </View>
 
@@ -633,7 +653,7 @@ function MoneyTab() {
                 <View style={[s.card, { backgroundColor: netBalance >= 0 ? '#f0fdf4' : '#fef2f2', marginBottom: 16 }]}>
                     <Text style={{ fontSize: 13, color: textSecondary, marginBottom: 4 }}>{t.netBalance}</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
-                        <Text style={{ fontSize: 24, fontWeight: '700', color: netBalance >= 0 ? '#16a34a' : '#dc2626' }}>₹{Math.abs(netBalance)}</Text>
+                        <Text style={{ fontSize: 24, fontWeight: '700', color: netBalance >= 0 ? '#16a34a' : '#dc2626' }}>₹{Number(Math.abs(netBalance).toFixed(2))}</Text>
                         <Text style={{ fontSize: 13, color: netBalance >= 0 ? '#16a34a' : '#dc2626' }}>{netBalance >= 0 ? t.inYourFavor : t.youOwe}</Text>
                     </View>
                 </View>
